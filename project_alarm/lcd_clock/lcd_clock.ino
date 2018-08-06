@@ -516,5 +516,5 @@ byte postpone() {
     al_min = al_min + pp;
     return postpone;
   }
-}
+} //untuk batalin alarm
 
