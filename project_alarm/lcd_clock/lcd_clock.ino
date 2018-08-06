@@ -13,13 +13,13 @@
 #define WEEKDAY 3
 
 //weekday state:
-#define SUN 0
-#define MON 1
-#define TUE 2
-#define WED 3
-#define THU 4
-#define FRI 5
-#define SAT 6
+#define MIN 0
+#define SEN 1
+#define SEL 2
+#define RAB 3
+#define KAM 4
+#define JUM 5
+#define SAB 6
 
 //Time:
 #define HOURS 0
@@ -51,6 +51,7 @@ byte menustate = 0;
 byte al_hour = 0;
 byte al_min = 0;
 byte al_sec = 0;
+byte pp = 2;
 String stat_alarm = "OFF";
 bool act_alarm = false;
 
@@ -65,7 +66,6 @@ void setup() {
   //initialize I2C and lcd:
   lcd.begin(16, 2);
   Wire.begin();
-  // Set the cursor at the begining of the first row
   /*lcd.setCursor(0, 0);
 
     // Print a text in the first row
@@ -85,9 +85,6 @@ void loop() {
   printTime();
   // Listen for buttons for 1 second
   buttonListen();
-
-
-
 
 }
 
@@ -236,8 +233,6 @@ void buttonListen() {
               case MINUTES:
                 al_min--;
                 if (al_min == -1) al_min = 59;
-
-
             }
         }
         break;
@@ -329,20 +324,16 @@ void printSetting() {
       if (hours == al_hour && minutes == al_min && act_alarm == true) {
         lcd.clear();
         lcd.setCursor(1, 0);
-        lcd.print("Wake up!!!");
-        lcd.setCursor(1, 1);
-        lcd.print("Wake up!!!");
-        digitalWrite (buzzerPin, HIGH);
-        delay (100);
-        digitalWrite (buzzerPin, LOW);
-        delay (1000);
+        lcd.print("ALARM IS ACTIVE");
+        bunyi();
         if (button == KEYPAD_DOWN) {
           stat_alarm = "OFF";
           act_alarm = false;
           digitalWrite (buzzerPin, LOW);
           break;
+        } else {
+          postpone();
         }
-
       } else {
 
         lcd.clear();
@@ -409,25 +400,25 @@ void printTime() {
       lcd.setCursor(0, 1);
       switch (weekday) {
         case SUN:
-          sprintf(time, "%02i/%02i/%02i     SUN", year, month, days);
+          sprintf(time, "%02i/%02i/%02i     MIN", year, month, days);
           break;
         case MON:
-          sprintf(time, "%02i/%02i/%02i     MON", year, month, days);
+          sprintf(time, "%02i/%02i/%02i     SEN", year, month, days);
           break;
         case TUE:
-          sprintf(time, "%02i/%02i/%02i     TUE", year, month, days);
+          sprintf(time, "%02i/%02i/%02i     SEL", year, month, days);
           break;
         case WED:
-          sprintf(time, "%02i/%02i/%02i     WED", year, month, days);
+          sprintf(time, "%02i/%02i/%02i     RAB", year, month, days);
           break;
         case THU:
-          sprintf(time, "%02i/%02i/%02i     THU", year, month, days);
+          sprintf(time, "%02i/%02i/%02i     KAM", year, month, days);
           break;
         case FRI:
-          sprintf(time, "%02i/%02i/%02i     FRI", year, month, days);
+          sprintf(time, "%02i/%02i/%02i     JUM", year, month, days);
           break;
         case SAT:
-          sprintf(time, "%02i/%02i/%02i     SAT", year, month, days);
+          sprintf(time, "%02i/%02i/%02i     SAB", year, month, days);
       }
       lcd.print(time);
       break;
@@ -512,3 +503,18 @@ float DS3231_get_treg()
 
   return rv;
 }
+
+void bunyi() {
+  digitalWrite (buzzerPin, HIGH);
+  delay (100);
+  digitalWrite (buzzerPin, LOW);
+  delay (1000);
+}
+
+byte postpone() {
+  if (hours == al_hour && minutes - 1 == al_min && act_alarm == true) {
+    al_min = al_min + pp;
+    return postpone;
+  }
+}
+
