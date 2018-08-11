@@ -1,6 +1,7 @@
 #include <LiquidCrystal.h>
 #include <LCDKeypad.h>
 #include <Wire.h>
+#include <Servo.h>
 
 //DS3231 address bus:
 #define DS3231_I2C_ADDRESS 0x68
@@ -30,12 +31,17 @@
 #define IDLEMENU 0
 #define SETDATE 1
 #define SETTIME 2
-#define SET_ALARM 3
-#define SHOW 4
-#define DONE 5
+#define MENU_KIPAS 3
+#define MENU_JENDELA 4
+#define SET_ALARM 5
+#define SHOW 6
+#define DONE 7
+
+#define KIPAS 26
 
 // The LCD screen
 LCDKeypad lcd;
+Servo jendela;
 
 // The time model
 byte year = 0;
@@ -57,22 +63,19 @@ String stat_alarm = "OFF";
 bool act_alarm = false;
 
 int buzzerPin = 22;
-
+unsigned int LDR;
 
 void setup() {
   //power up ZS-042
+
+  jendela.attach(24);
+  pinMode(KIPAS, OUTPUT);
   pinMode(53, OUTPUT);
   pinMode (buzzerPin, OUTPUT);
   digitalWrite(53, HIGH);
   //initialize I2C and lcd:
   lcd.begin(16, 2);
   Wire.begin();
-  /*lcd.setCursor(0, 0);
-
-    // Print a text in the first row
-    lcd.print("PRESS SELECT    ");
-    lcd.setCursor(0, 1);
-    lcd.print("TO SET DATETIME ");*/
   //setDS3231time(30,06,17,3,11,5,16);
   //delay(1000);
   readDS3231time(&seconds, &minutes, &hours, &weekday, &days, &month, &year);
@@ -91,7 +94,7 @@ void loop() {
 
 void buttonListen() {
   // Read the buttons five times in a second
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 8; i++) {
 
     // Read the buttons value
     int button = lcd.button();
@@ -237,6 +240,26 @@ void buttonListen() {
             }
         }
         break;
+      case MENU_KIPAS:
+        lcd.clear();
+        switch (button) {
+          case KEYPAD_DOWN:
+            kipasmati();
+            break;
+          case KEYPAD_UP:
+            kipasnyala();
+        }
+
+      case MENU_JENDELA:
+        lcd.clear();
+        switch (button) {
+          case KEYPAD_DOWN:
+            jendelatutup();
+            break;
+          case KEYPAD_UP:
+            jendelabuka();
+        }
+
       case DONE:
         // DS3231 seconds, minutes, hours, day, date, month, year
         String stat = "OKE";
@@ -250,7 +273,7 @@ void buttonListen() {
     }
     datesetting %= 4;
     timesetting %= 3;
-    menustate %= 5;
+    menustate %= 7;
     printSetting();
 
     year %= 100;
@@ -321,12 +344,47 @@ void printSetting() {
       }
       break;
 
+    case MENU_KIPAS:
+      lcd.setCursor(0, 0);
+      lcd.print("ATUR KIPAS:        ");
+      lcd.setCursor(0 , 1);
+      switch (button) {
+        case KEYPAD_DOWN:
+          lcd.setCursor(0 , 1);
+          lcd.print("OFF");
+          delay(1500);
+          break;
+        case KEYPAD_UP:
+          lcd.setCursor(0, 1);
+          lcd.print("ON");
+          delay(1500);
+      }
+      break;
+
+    case MENU_JENDELA:
+      lcd.setCursor(0, 0);
+      lcd.print("ATUR JENDELA:        ");
+      lcd.setCursor(0 , 1);
+      switch (button) {
+        case KEYPAD_DOWN:
+          lcd.setCursor(0 , 1);
+          lcd.print("TUTUP");
+          delay(1500);
+          break;
+        case KEYPAD_UP:
+          lcd.setCursor(0, 1);
+          lcd.print("BUKA");
+          delay(1500);
+      }
+      break;
     case IDLEMENU:
       postmin = minutes + 1;
+      LDR = analogRead(A8);
       if (hours == al_hour && minutes == al_min && act_alarm == true) {
         lcd.clear();
         lcd.setCursor(1, 0);
         lcd.print("ALARM IS ACTIVE");
+        kipasmati();
         for (int i = 0; i < 20; i++) {
           if (button == KEYPAD_DOWN) {
             stat_alarm = "OFF";
@@ -347,12 +405,7 @@ void printSetting() {
         al_min = al_min + pp;
         lcd.clear();
         lcd.setCursor(1, 0);
-        lcd.print("POSTPONE");
-        /*else if (hours == al_hour && postmin == al_min) {
-           act_alarm == true;
-           al_min += pp;
-           break;
-           }*/
+
       }
 
       lcd.clear();
@@ -368,6 +421,12 @@ void printSetting() {
       lcd.setCursor(0, 1);
       sprintf(time, "%02i/%02i/%02i", year, month, days);
       lcd.print(time);
+      if (LDR > 200) {
+        jendelatutup();
+      }
+      else if (LDR < 200) {
+        jendelabuka();
+      }
       break;
     case DONE:
       lcd.setCursor(0, 0);
@@ -528,5 +587,20 @@ void bunyi() {
   delay (1000);
 }
 
+void kipasnyala() {
+  digitalWrite(KIPAS, 1);
+}
+
+void kipasmati() {
+  digitalWrite(KIPAS, 0);
+}
+
+void jendelabuka() {
+  jendela.write(20);
+}
+
+void jendelatutup() {
+  jendela.write(140);
+}
 
 
