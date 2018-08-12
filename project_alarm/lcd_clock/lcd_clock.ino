@@ -26,6 +26,7 @@
 #define HOURS 0
 #define MINUTES 1
 #define SECONDS 2
+#define ACTIVATED 3
 
 //menu list:
 #define IDLEMENU 0
@@ -61,13 +62,15 @@ byte pp = 3;
 byte postmin = 0;
 String stat_alarm = "OFF";
 bool act_alarm = false;
+bool act_kipas = false;
+bool act_jendela = false;
 
 int buzzerPin = 22;
 unsigned int LDR;
 
 void setup() {
   //power up ZS-042
-
+  Serial.begin(9600);
   jendela.attach(24);
   pinMode(KIPAS, OUTPUT);
   pinMode(53, OUTPUT);
@@ -199,8 +202,6 @@ void buttonListen() {
         switch (button) {
           case KEYPAD_SELECT:
             setDS3231time(seconds, minutes, hours, weekday, days, month, year);
-            stat_alarm = "ON";
-            act_alarm = true;
             break;
 
           // Right button was pushed
@@ -211,7 +212,7 @@ void buttonListen() {
           // Left button was pushed
           case KEYPAD_LEFT:
             timesetting--;
-            if (timesetting == -1) timesetting = 1;
+            if (timesetting == -1) timesetting = 3;
             break;
 
           // Up button was pushed
@@ -223,6 +224,11 @@ void buttonListen() {
               case MINUTES:
                 al_min++;
                 break;
+              case SECONDS:
+                break;
+              case ACTIVATED:
+                stat_alarm = "ON";
+                act_alarm = true;
 
             }
             break;
@@ -237,42 +243,45 @@ void buttonListen() {
               case MINUTES:
                 al_min--;
                 if (al_min == -1) al_min = 59;
+              case SECONDS:
+                break;
+              case ACTIVATED:
+                stat_alarm = "OFF";
+                act_alarm = false;
             }
         }
         break;
       case MENU_KIPAS:
         lcd.clear();
-        switch (button) {
-          case KEYPAD_DOWN:
-            kipasmati();
-            break;
-          case KEYPAD_UP:
-            kipasnyala();
+        if (button == KEYPAD_UP && act_kipas == false) {
+          kipasnyala();
+          act_kipas = true;
         }
+        else if (button == KEYPAD_UP && act_kipas == true) {
+          kipasmati();
+          act_kipas = false;
+        }
+        break;
+
 
       case MENU_JENDELA:
         lcd.clear();
-        switch (button) {
-          case KEYPAD_DOWN:
-            jendelatutup();
-            break;
-          case KEYPAD_UP:
-            jendelabuka();
+        if (button == KEYPAD_DOWN && act_jendela == false) {
+          jendelabuka();
+          act_jendela = true;
         }
+        else if (button == KEYPAD_DOWN && act_jendela == true) {
+          jendelatutup();
+          act_jendela = false;
+        }
+        break;
 
-      case DONE:
-        // DS3231 seconds, minutes, hours, day, date, month, year
-        String stat = "OKE";
-        /*if (button == KEYPAD_SELECT) {
-          setDS3231time(seconds, minutes, hours, weekday, days, month, year);
-          stat_alarm = "ON";
-          }*/
     }
     if (button == KEYPAD_SELECT) {
       menustate++;
     }
     datesetting %= 4;
-    timesetting %= 3;
+    timesetting %= 4;
     menustate %= 7;
     printSetting();
 
@@ -288,7 +297,7 @@ void buttonListen() {
     printTime();
 
     // Wait one fifth of a second to complete
-    while (millis() % 200 != 0);
+    while (millis() % 125 != 0);
   }
 }
 
@@ -341,6 +350,19 @@ void printSetting() {
           break;
         case MINUTES:
           lcd.print("Minutes");
+        case SECONDS:
+          break;
+        case ACTIVATED:
+          lcd.print("Status");
+          if (button == KEYPAD_UP) {
+            lcd.setCursor(10 , 1);
+            lcd.print("ON");
+          }
+          else if (button == KEYPAD_DOWN) {
+            lcd.setCursor(10 , 1);
+            lcd.print("OFF");
+            
+          }
       }
       break;
 
@@ -348,33 +370,32 @@ void printSetting() {
       lcd.setCursor(0, 0);
       lcd.print("ATUR KIPAS:        ");
       lcd.setCursor(0 , 1);
-      switch (button) {
-        case KEYPAD_DOWN:
-          lcd.setCursor(0 , 1);
-          lcd.print("OFF");
-          delay(1500);
-          break;
-        case KEYPAD_UP:
-          lcd.setCursor(0, 1);
-          lcd.print("ON");
-          delay(1500);
+      if (button == KEYPAD_UP && act_kipas == true) {
+        lcd.setCursor(0 , 1);
+        lcd.print("ON");
+
+      }
+      else if (button == KEYPAD_UP && act_kipas == false) {
+        lcd.setCursor(0 , 1);
+        lcd.print("OFF");
+
       }
       break;
+
 
     case MENU_JENDELA:
       lcd.setCursor(0, 0);
       lcd.print("ATUR JENDELA:        ");
       lcd.setCursor(0 , 1);
-      switch (button) {
-        case KEYPAD_DOWN:
-          lcd.setCursor(0 , 1);
-          lcd.print("TUTUP");
-          delay(1500);
-          break;
-        case KEYPAD_UP:
-          lcd.setCursor(0, 1);
-          lcd.print("BUKA");
-          delay(1500);
+      if (button == KEYPAD_DOWN && act_jendela == true) {
+        lcd.setCursor(0 , 1);
+        lcd.print("BUKA");
+
+      }
+      else if (button == KEYPAD_DOWN && act_jendela == false) {
+        lcd.setCursor(0 , 1);
+        lcd.print("TUTUP");
+
       }
       break;
     case IDLEMENU:
@@ -386,26 +407,13 @@ void printSetting() {
         lcd.print("ALARM IS ACTIVE");
         kipasmati();
         for (int i = 0; i < 20; i++) {
-          if (button == KEYPAD_DOWN) {
-            stat_alarm = "OFF";
-            act_alarm = false;
-            digitalWrite (buzzerPin, LOW);
-            break;
-          }
           bunyi();
         }
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("ALARM WILL BE");
-        lcd.setCursor(0, 1);
         lcd.print("POSTPONE");
         act_alarm = false;
-        delay (1000);
+        delay (400);
         act_alarm = true;
         al_min = al_min + pp;
-        lcd.clear();
-        lcd.setCursor(1, 0);
-
       }
 
       lcd.clear();
@@ -421,18 +429,18 @@ void printSetting() {
       lcd.setCursor(0, 1);
       sprintf(time, "%02i/%02i/%02i", year, month, days);
       lcd.print(time);
-      if (LDR > 200) {
-        jendelatutup();
-      }
-      else if (LDR < 200) {
-        jendelabuka();
-      }
+      // if (LDR > 200) {
+      //  jendelatutup();
+      // }
+      // else if (LDR < 200) {
+      //  jendelabuka();
+      //}
       break;
-    case DONE:
-      lcd.setCursor(0, 0);
-      lcd.print("DONE            ");
-      lcd.setCursor(0, 1);
-      lcd.print("................");
+      /*case DONE:
+        lcd.setCursor(0, 0);
+        lcd.print("DONE            ");
+        lcd.setCursor(0, 1);
+        lcd.print("................");*/
   }
 }
 
@@ -602,5 +610,3 @@ void jendelabuka() {
 void jendelatutup() {
   jendela.write(140);
 }
-
-
