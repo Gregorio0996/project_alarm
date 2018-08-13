@@ -35,8 +35,9 @@
 #define MENU_KIPAS 3
 #define MENU_JENDELA 4
 #define SET_ALARM 5
-#define SHOW 6
-#define DONE 7
+#define SET_ALARM_ON 6
+#define SHOW 7
+#define DONE 8
 
 #define KIPAS 26
 
@@ -58,10 +59,14 @@ byte menustate = 0;
 byte al_hour = 0;
 byte al_min = 0;
 byte al_sec = 0;
+byte al_hour_on = 0;
+byte al_min_on = 0;
+byte al_sec_on = 0;
 byte pp = 3;
-byte postmin = 0;
 String stat_alarm = "OFF";
+String stat_alarm2 = "OFF";
 bool act_alarm = false;
+bool act_alarm2 = false;
 bool act_kipas = false;
 bool act_jendela = false;
 
@@ -79,8 +84,6 @@ void setup() {
   //initialize I2C and lcd:
   lcd.begin(16, 2);
   Wire.begin();
-  //setDS3231time(30,06,17,3,11,5,16);
-  //delay(1000);
   readDS3231time(&seconds, &minutes, &hours, &weekday, &days, &month, &year);
 }
 
@@ -97,7 +100,7 @@ void loop() {
 
 void buttonListen() {
   // Read the buttons five times in a second
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 9; i++) {
 
     // Read the buttons value
     int button = lcd.button();
@@ -251,6 +254,62 @@ void buttonListen() {
             }
         }
         break;
+
+      case SET_ALARM_ON:
+        switch (button) {
+          case KEYPAD_SELECT:
+            setDS3231time(seconds, minutes, hours, weekday, days, month, year);
+            break;
+
+          // Right button was pushed
+          case KEYPAD_RIGHT:
+            timesetting++;
+            break;
+
+          // Left button was pushed
+          case KEYPAD_LEFT:
+            timesetting--;
+            if (timesetting == -1) timesetting = 3;
+            break;
+
+          // Up button was pushed
+          case KEYPAD_UP:
+            switch (timesetting) {
+              case HOURS:
+                al_hour_on++;
+                break;
+              case MINUTES:
+                al_min_on++;
+                break;
+              case SECONDS:
+                break;
+              case ACTIVATED:
+                stat_alarm2 = "ON";
+                act_alarm2 = true;
+
+            }
+            break;
+
+          // Down button was pushed
+          case KEYPAD_DOWN:
+            switch (timesetting) {
+              case HOURS:
+                al_hour_on--;
+                if (al_hour_on == -1) al_hour_on = 23;
+                break;
+              case MINUTES:
+                al_min_on--;
+                if (al_min_on == -1) al_min_on = 59;
+              case SECONDS:
+                break;
+              case ACTIVATED:
+                stat_alarm2 = "OFF";
+                act_alarm2 = false;
+            }
+        }
+        break;
+
+
       case MENU_KIPAS:
         lcd.clear();
         if (button == KEYPAD_UP && act_kipas == false) {
@@ -282,7 +341,7 @@ void buttonListen() {
     }
     datesetting %= 4;
     timesetting %= 4;
-    menustate %= 7;
+    menustate %= 8;
     printSetting();
 
     year %= 100;
@@ -291,6 +350,8 @@ void buttonListen() {
     hours %= 24;
     al_hour %= 24;
     al_min %= 60;
+    al_hour_on %= 24;
+    al_min_on %= 60;
     minutes %= 60;
     seconds %= 60;
     weekday %= 7;
@@ -361,7 +422,33 @@ void printSetting() {
           else if (button == KEYPAD_DOWN) {
             lcd.setCursor(10 , 1);
             lcd.print("OFF");
-            
+
+          }
+      }
+      break;
+
+    case SET_ALARM_ON:
+      lcd.setCursor(0, 0);
+      lcd.print("SET ALRM ON:        ");
+      lcd.setCursor(9, 0);
+      switch (timesetting) {
+        case HOURS:
+          lcd.print("Hours  ");
+          break;
+        case MINUTES:
+          lcd.print("Minutes");
+        case SECONDS:
+          break;
+        case ACTIVATED:
+          lcd.print("Status");
+          if (button == KEYPAD_UP) {
+            lcd.setCursor(10 , 1);
+            lcd.print("ON");
+          }
+          else if (button == KEYPAD_DOWN) {
+            lcd.setCursor(10 , 1);
+            lcd.print("OFF");
+
           }
       }
       break;
@@ -399,14 +486,21 @@ void printSetting() {
       }
       break;
     case IDLEMENU:
-      postmin = minutes + 1;
       LDR = analogRead(A8);
       if (hours == al_hour && minutes == al_min && act_alarm == true) {
         lcd.clear();
         lcd.setCursor(1, 0);
-        lcd.print("ALARM IS ACTIVE");
+        lcd.print("ALARM OFF IS ACTIVE");
         kipasmati();
+        jendelatutup();
         for (int i = 0; i < 20; i++) {
+          int button = lcd.button();
+          if (button == KEYPAD_DOWN) {
+            stat_alarm = "OFF";
+            act_alarm = false;
+            digitalWrite(buzzerPin, LOW);
+            break;
+          }
           bunyi();
         }
         lcd.print("POSTPONE");
@@ -414,6 +508,30 @@ void printSetting() {
         delay (400);
         act_alarm = true;
         al_min = al_min + pp;
+      }
+
+
+      if (hours == al_hour_on && minutes == al_min_on && act_alarm2 == true) {
+        lcd.clear();
+        lcd.setCursor(1, 0);
+        lcd.print("ALARM ON IS ACTIVE");
+        kipasnyala();
+        jendelabuka();
+        for (int i = 0; i < 20; i++) {
+          int button = lcd.button();
+          if (button == KEYPAD_DOWN) {
+            stat_alarm2 = "OFF";
+            act_alarm2 = false;
+            digitalWrite(buzzerPin, LOW);
+            break;
+          }
+          bunyi();
+        }
+        lcd.print("POSTPONE");
+        act_alarm2 = false;
+        delay (400);
+        act_alarm2 = true;
+        al_min_on = al_min_on + pp;
       }
 
       lcd.clear();
@@ -424,23 +542,23 @@ void printSetting() {
       lcd.print(tempC);
       lcd.print((char)223);
       lcd.print("C ");
-      lcd.setCursor(13, 1);
+      lcd.setCursor(9, 1);
       lcd.print(stat_alarm);
+      lcd.setCursor(13, 1);
+      lcd.setCursor(stat_alarm2);
       lcd.setCursor(0, 1);
       sprintf(time, "%02i/%02i/%02i", year, month, days);
       lcd.print(time);
-      // if (LDR > 200) {
-      //  jendelatutup();
-      // }
-      // else if (LDR < 200) {
-      //  jendelabuka();
-      //}
+      while (stat_alarm == "OFF" && act_alarm == false) {
+        if (LDR > 200) {
+          jendelatutup();
+        }
+        else if (LDR < 200) {
+          jendelabuka();
+        }
+      }
       break;
-      /*case DONE:
-        lcd.setCursor(0, 0);
-        lcd.print("DONE            ");
-        lcd.setCursor(0, 1);
-        lcd.print("................");*/
+
   }
 }
 
@@ -514,6 +632,11 @@ void printTime() {
     case SET_ALARM:
       lcd.setCursor(0, 1);
       sprintf(time, "%02i:%02i:%02i        ", al_hour, al_min, al_sec);
+      lcd.print(time);
+      break;
+    case SET_ALARM_ON:
+      lcd.setCursor(0, 1);
+      sprintf(time, "%02i:%02i:%02i        ", al_hour_on, al_min_on, al_sec_on);
       lcd.print(time);
       break;
 
