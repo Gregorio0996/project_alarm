@@ -403,7 +403,7 @@ void printSetting() {
       break;
     case SET_ALARM:
       lcd.setCursor(0, 0);
-      lcd.print("SET ALRM:        ");
+      lcd.print("SET OFF:        ");
       lcd.setCursor(9, 0);
       switch (timesetting) {
         case HOURS:
@@ -418,18 +418,20 @@ void printSetting() {
           if (button == KEYPAD_UP) {
             lcd.setCursor(10 , 1);
             lcd.print("ON");
+            delay(1000);
           }
           else if (button == KEYPAD_DOWN) {
             lcd.setCursor(10 , 1);
             lcd.print("OFF");
-
+            delay(1000);
           }
       }
       break;
 
     case SET_ALARM_ON:
+      lcd.clear();
       lcd.setCursor(0, 0);
-      lcd.print("SET ALRM ON:        ");
+      lcd.print("SET ON:        ");
       lcd.setCursor(9, 0);
       switch (timesetting) {
         case HOURS:
@@ -444,11 +446,12 @@ void printSetting() {
           if (button == KEYPAD_UP) {
             lcd.setCursor(10 , 1);
             lcd.print("ON");
+            delay(1000);
           }
           else if (button == KEYPAD_DOWN) {
             lcd.setCursor(10 , 1);
             lcd.print("OFF");
-
+            delay(1000);
           }
       }
       break;
@@ -490,7 +493,9 @@ void printSetting() {
       if (hours == al_hour && minutes == al_min && act_alarm == true) {
         lcd.clear();
         lcd.setCursor(1, 0);
-        lcd.print("ALARM OFF IS ACTIVE");
+        lcd.print("ALARM OFF IS");
+        lcd.setCursor(1 , 1);
+        lcd.print(" ACTIVE");
         kipasmati();
         jendelatutup();
         for (int i = 0; i < 20; i++) {
@@ -500,21 +505,26 @@ void printSetting() {
             act_alarm = false;
             digitalWrite(buzzerPin, LOW);
             break;
+
           }
           bunyi();
         }
-        lcd.print("POSTPONE");
-        act_alarm = false;
-        delay (400);
-        act_alarm = true;
-        al_min = al_min + pp;
+        if (act_alarm == true) {
+          lcd.print("POSTPONE");
+          act_alarm = false;
+          delay (400);
+          act_alarm = true;
+          al_min = al_min + pp;
+        }
       }
 
 
       if (hours == al_hour_on && minutes == al_min_on && act_alarm2 == true) {
         lcd.clear();
         lcd.setCursor(1, 0);
-        lcd.print("ALARM ON IS ACTIVE");
+        lcd.print("ALARM ON IS");
+        lcd.setCursor(1 , 1);
+        lcd.print(" ACTIVE");
         kipasnyala();
         jendelabuka();
         for (int i = 0; i < 20; i++) {
@@ -524,14 +534,17 @@ void printSetting() {
             act_alarm2 = false;
             digitalWrite(buzzerPin, LOW);
             break;
+
           }
           bunyi();
         }
-        lcd.print("POSTPONE");
-        act_alarm2 = false;
-        delay (400);
-        act_alarm2 = true;
-        al_min_on = al_min_on + pp;
+        if (act_alarm2 == true) {
+          lcd.print("POSTPONE");
+          act_alarm2 = false;
+          delay (400);
+          act_alarm2 = true;
+          al_min_on = al_min_on + pp;
+        }
       }
 
       lcd.clear();
@@ -545,11 +558,11 @@ void printSetting() {
       lcd.setCursor(9, 1);
       lcd.print(stat_alarm);
       lcd.setCursor(13, 1);
-      lcd.setCursor(stat_alarm2);
+      lcd.print(stat_alarm2);
       lcd.setCursor(0, 1);
       sprintf(time, "%02i/%02i/%02i", year, month, days);
       lcd.print(time);
-      while (stat_alarm == "OFF" && act_alarm == false) {
+      if (stat_alarm == "OFF" && act_alarm == false && stat_alarm2 == "OFF" && act_alarm2 == false ) {
         if (LDR > 200) {
           jendelatutup();
         }
